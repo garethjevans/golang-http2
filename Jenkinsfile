@@ -1,7 +1,5 @@
 pipeline {
-    agent {
-        label "jenkins-go"
-    }
+    agent any
     environment {
       ORG               = 'garethjevans'
       APP_NAME          = 'golang-http2'
@@ -21,19 +19,19 @@ pipeline {
         steps {
           dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2') {
             checkout scm
-            container('go') {
+            //container('go') {
               sh "make linux"
               sh 'export VERSION=$PREVIEW_VERSION && skaffold build -f skaffold.yaml'
 
 
               sh "jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION"
-            }
+            //}
           }
           dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2/charts/preview') {
-            container('go') {
+            //container('go') {
               sh "make preview"
               sh "jx preview --app $APP_NAME --dir ../.."
-            }
+            //}
           }
         }
       }
@@ -42,7 +40,7 @@ pipeline {
           branch 'master'
         }
         steps {
-          container('go') {
+          //container('go') {
             dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2') {
               checkout scm
             }
@@ -69,7 +67,7 @@ pipeline {
                 sh "jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:\$(cat VERSION)"
               }
             }
-          }
+          //}
         }
       }
       stage('Promote to Environments') {
@@ -78,7 +76,7 @@ pipeline {
         }
         steps {
           dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2/charts/golang-http2') {
-            container('go') {
+            //container('go') {
               sh 'jx step changelog --version v\$(cat ../../VERSION)'
 
               // release the helm chart
@@ -86,7 +84,7 @@ pipeline {
 
               // promote through all 'Auto' promotion Environments
               sh 'jx promote -b --all-auto --timeout 1h --version \$(cat ../../VERSION)'
-            }
+            //}
           }
         }
       }
