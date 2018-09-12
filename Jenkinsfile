@@ -19,19 +19,13 @@ pipeline {
         steps {
           dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2') {
             checkout scm
-            //container('go') {
-              sh "make linux"
-              sh 'export VERSION=$PREVIEW_VERSION && skaffold build -f skaffold.yaml'
-
-
-              sh "jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION"
-            //}
+            sh "make linux"
+            sh 'export VERSION=$PREVIEW_VERSION && skaffold build -f skaffold.yaml'
+            sh "jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION"
           }
           dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2/charts/preview') {
-            //container('go') {
-              sh "make preview"
-              sh "jx preview --app $APP_NAME --dir ../.."
-            //}
+            sh "make preview"
+            sh "jx preview --app $APP_NAME --dir ../.."
           }
         }
       }
@@ -40,34 +34,29 @@ pipeline {
           branch 'master'
         }
         steps {
-          //container('go') {
-            dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2') {
-              checkout scm
-            }
-            dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2/charts/golang-http2') {
-                // ensure we're not on a detached head
-                sh "git checkout master"
-                // until we switch to the new kubernetes / jenkins credential implementation use git credentials store
-                sh "git config --global credential.helper store"
+          dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2') {
+            checkout scm
+          }
+          dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2/charts/golang-http2') {
+            git 'https://github.com/garethjevans/golang-http2.git'
+            // until we switch to the new kubernetes / jenkins credential implementation use git credentials store
+            sh "git config --global credential.helper store"
 
-                sh "jx step git credentials"
-            }
-            dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2') {
-              // so we can retrieve the version in later steps
-              sh "echo \$(jx-release-version) > VERSION"
-            }
-            dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2/charts/golang-http2') {
-              sh "make tag"
-            }
-            dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2') {
-              container('go') {
-                sh "make build"
-                sh 'export VERSION=`cat VERSION` && skaffold build -f skaffold.yaml'
+            sh "jx step git credentials"
+          }
+          dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2') {
+            // so we can retrieve the version in later steps
+            sh "echo \$(jx-release-version) > VERSION"
+          }
+          dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2/charts/golang-http2') {
+            sh "make tag"
+          }
+          dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2') {
+            sh "make build"
+            sh 'export VERSION=`cat VERSION` && skaffold build -f skaffold.yaml'
 
-                sh "jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:\$(cat VERSION)"
-              }
-            }
-          //}
+            sh "jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:\$(cat VERSION)"
+          }
         }
       }
       stage('Promote to Environments') {
@@ -76,15 +65,13 @@ pipeline {
         }
         steps {
           dir ('/home/jenkins/go/src/github.com/garethjevans/golang-http2/charts/golang-http2') {
-            //container('go') {
-              sh 'jx step changelog --version v\$(cat ../../VERSION)'
+            sh 'jx step changelog --version v\$(cat ../../VERSION)'
 
-              // release the helm chart
-              sh 'jx step helm release'
+            // release the helm chart
+            sh 'jx step helm release'
 
-              // promote through all 'Auto' promotion Environments
-              sh 'jx promote -b --all-auto --timeout 1h --version \$(cat ../../VERSION)'
-            //}
+            // promote through all 'Auto' promotion Environments
+            sh 'jx promote -b --all-auto --timeout 1h --version \$(cat ../../VERSION)'
           }
         }
       }
